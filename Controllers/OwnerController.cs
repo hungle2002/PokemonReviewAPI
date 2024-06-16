@@ -13,12 +13,15 @@ namespace PokemonReviewApp.Controllers
     {
         private readonly IOwnerRepository _ownerRepository;
         private readonly ICountryRepository _countryRepository;
+        private readonly IPokemonRepository _pokemonRepository;
         private readonly IMapper _mapper;
 
-        public OwnerController(IOwnerRepository ownerRepository, ICountryRepository countryRepository, IMapper mapper)
+        public OwnerController(IOwnerRepository ownerRepository, ICountryRepository countryRepository,
+            IPokemonRepository pokemonRepository, IMapper mapper)
         {
             _ownerRepository = ownerRepository;
             _countryRepository = countryRepository;
+            _pokemonRepository = pokemonRepository;
             _mapper = mapper;
         }
 
@@ -134,5 +137,36 @@ namespace PokemonReviewApp.Controllers
 
             return NoContent();
         }
+
+        [HttpDelete("{ownerId}")]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public IActionResult DeleteCountry(int ownerId)
+        {
+            if (!_ownerRepository.OwnerExists(ownerId))
+                return NotFound(ModelState);
+
+            var ownerToDelete = _ownerRepository.GetOwner(ownerId);
+            var pokemonToDelete = _ownerRepository.GetPokemonsByOwner(ownerId);
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!_pokemonRepository.DeletePokemons(pokemonToDelete.ToList()))
+            {
+                ModelState.AddModelError("", "Something went wrong deleting pokemons");
+                return StatusCode(500, ModelState);
+            }
+
+            if (!_ownerRepository.DeleteOwner(ownerToDelete))
+            {
+                ModelState.AddModelError("", "Something went wrong deleting owner");
+                return StatusCode(500, ModelState);
+            }
+
+            return NoContent();
+        }
+
     }
 }

@@ -13,11 +13,13 @@ namespace PokemonReviewApp.Controllers
     public class ReviewerController : Controller
     {
         private readonly IReviewerRepository _reviewerRepository;
+        private readonly IReviewRepository _reviewRepository;
         private readonly IMapper _mapper;
 
-        public ReviewerController(IReviewerRepository reviewerRepository, IMapper mapper)
+        public ReviewerController(IReviewerRepository reviewerRepository, IReviewRepository reviewRepository, IMapper mapper)
         {
             _reviewerRepository = reviewerRepository;
+            _reviewRepository = reviewRepository;
             _mapper = mapper;
         }
 
@@ -118,6 +120,39 @@ namespace PokemonReviewApp.Controllers
             if (!_reviewerRepository.UpdateReviewer(reviewerMap))
             {
                 ModelState.AddModelError("", "Something went wrong updating reviewer");
+                return StatusCode(500, ModelState);
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{reviewerId}")]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public IActionResult DeleteReviewer(int reviewerId)
+        {
+            if (!_reviewerRepository.ReviewerExists(reviewerId))
+                return NotFound(ModelState);
+
+            var reviewerToDelete = _reviewerRepository.GetReviewer(reviewerId);
+            var reviewToDelete = _reviewerRepository.GetReviewsByReviewer(reviewerId);
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (reviewToDelete.ToList().Count() > 0)
+            {
+                if (!_reviewRepository.DeleteReviews(reviewToDelete.ToList()))
+                {
+                    ModelState.AddModelError("", "Something went wrong deleting reviews");
+                    return StatusCode(500, ModelState);
+                }
+            }
+
+            if (!_reviewerRepository.DeleteReviewer(reviewerToDelete))
+            {
+                ModelState.AddModelError("", "Something went wrong deleting reviewer");
                 return StatusCode(500, ModelState);
             }
 
